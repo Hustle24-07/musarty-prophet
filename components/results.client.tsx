@@ -12,7 +12,6 @@ import {
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 import { search } from "@/app/actions/search";
-import { MediaModal } from "./media-modal";
 import { Button } from "./ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { Input } from "./ui/input";
@@ -51,24 +50,18 @@ export const ResultsClient = ({ defaultData }: ResultsClientProps) => {
         <div className="gap-4 sm:columns-2 md:columns-3 lg:columns-2 xl:columns-3">
           {images.map((image) => (
             <div key={image.url} className="mb-4 break-inside-avoid">
-              <AspectRatio ratio={1}>
-                <MediaModal imgSrc={image.url} />
-              </AspectRatio>
+              <AspectRatio ratio={1}></AspectRatio>
             </div>
           ))}
           {"data" in state && state.data?.length
             ? state.data.map((blob) => (
                 <div key={blob.url} className="mb-4 break-inside-avoid">
-                  <AspectRatio ratio={1}>
-                    <MediaModal imgSrc={blob.url} />
-                  </AspectRatio>
+                  <AspectRatio ratio={1}></AspectRatio>
                 </div>
               ))
             : defaultData.map((blob) => (
                 <div key={blob.url} className="mb-4 break-inside-avoid">
-                  <AspectRatio ratio={1}>
-                    <MediaModal imgSrc={blob.downloadUrl} />
-                  </AspectRatio>
+                  <AspectRatio ratio={1}></AspectRatio>
                 </div>
               ))}
         </div>
@@ -131,4 +124,3 @@ export const ResultsClient = ({ defaultData }: ResultsClientProps) => {
     </>
   );
 };
-

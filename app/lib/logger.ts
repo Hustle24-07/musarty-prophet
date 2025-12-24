@@ -1,23 +1,23 @@
-import fs from 'fs/promises';
-import path from 'path';
+import fs from "fs/promises";
+import path from "path";
 
-const LOG_FILE = path.join(process.cwd(), 'tattty-logs.json');
+const LOG_FILE = path.join(process.cwd(), "musarty-logs.json");
 
 export interface LogEntry {
   id: string;
   timestamp: string;
   requestId: string;
-  type: 'info' | 'success' | 'error' | 'prompt' | 'image';
-  source: 'Baddie' | 'Replicate' | 'System';
+  type: "info" | "success" | "error" | "prompt" | "image";
+  source: "Baddie" | "Replicate" | "System";
   message: string;
   details?: any;
 }
 
-export async function writeLog(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
+export async function writeLog(entry: Omit<LogEntry, "id" | "timestamp">) {
   try {
     let logs: LogEntry[] = [];
     try {
-      const data = await fs.readFile(LOG_FILE, 'utf-8');
+      const data = await fs.readFile(LOG_FILE, "utf-8");
       logs = JSON.parse(data);
     } catch (e) {
       // File doesn't exist or is empty, start fresh
@@ -26,7 +26,7 @@ export async function writeLog(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
     const newEntry: LogEntry = {
       id: Math.random().toString(36).substring(7),
       timestamp: new Date().toISOString(),
-      ...entry
+      ...entry,
     };
 
     // Keep last 100 logs
@@ -41,7 +41,7 @@ export async function writeLog(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
 
 export async function getLogs(): Promise<LogEntry[]> {
   try {
-    const data = await fs.readFile(LOG_FILE, 'utf-8');
+    const data = await fs.readFile(LOG_FILE, "utf-8");
     return JSON.parse(data);
   } catch (e) {
     return [];
@@ -49,10 +49,10 @@ export async function getLogs(): Promise<LogEntry[]> {
 }
 
 export async function clearLogs() {
-    try {
-        await fs.writeFile(LOG_FILE, JSON.stringify([], null, 2));
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e };
-    }
+  try {
+    await fs.writeFile(LOG_FILE, JSON.stringify([], null, 2));
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e };
+  }
 }
