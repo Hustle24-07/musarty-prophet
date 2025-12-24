@@ -1,0 +1,2268 @@
+• Run an initial search
+
+• Inspect early results
+
+• Identify gaps or missing context
+
+• Reformulate the query
+
+• Retrieve new data
+
+• Combine findings across pages
+
+• Summarize results using LLM reasoning
+
+Hybrid Search
+Hybrid search combines keyword and semantic search to deliver the best of both worlds.
+
+How it Works
+• Performs semantic matching to understand intent
+
+• Uses keyword relevance to anchor results to factual grounding
+
+• Ranks results using a weighted combination of both signals
+
+
+
+
+
+Scenario	Best Search Type	Reason
+You need high precision for very specific terms	Keyword	Exact matching
+You want conceptually relevant results for broad questions	Semantic	Understands meaning
+You need both precision and strong intent matching	Hybrid	Balanced approach
+Research tasks needing deep exploration	Hybrid or Semantic	Captures broader context
+Technical or documentation-based questions	Keyword + Semantic	Finds exact API names plus explanations
+
+
+
+
+
+
+
+
+
+Why This Matters for Agents
+Agents need search to be:
+
+• Accurate: Retrieve exactly what the user meant
+
+• Flexible: Understand synonyms and intent
+
+• Grounded: Avoid hallucinations
+
+• Resilient: Adapt to vague or incomplete queries
+
+This combination allows agents to interpret human queries the way humans interpret information.
+
+
+
+
+
+In this unit, you learned the core pillars of search quality:
+
+• Recall: Gather as much relevant information as possible
+
+• Precision: Keep results highly relevant
+
+• Recency: Prioritize the newest content
+
+• Domain filters: Control where information comes from
+
+• Trust scoring: Identify credible sources
+
+• Depth, refinement, and expansion: Guide multi-step research
+
+• Failure modes: Recognize and correct common problems
+
+Mastering these concepts helps agents consistently retrieve accurate, trustworthy, and useful information.
+
+
+
+
+
+
+
+
+
+ Search Quality Concepts
+High-quality search depends on several factors:
+
+• Recall: retrieving most relevant information
+
+• Precision: filtering results for relevance
+
+• Recency: prioritizing fresh, timely content
+
+• Domain filters: controlling which sites are included or excluded
+
+• Trust scoring: surfacing credible, authoritative sources
+
+• Depth and multi-step retrieval: expanding or refining searches
+
+• Failure modes: recognizing too-broad, too-narrow, outdated, or low-quality sources
+
+
+
+
+
+
+
+What you will learn
+
+• How to perform a basic search using Tavily
+
+• How Tavily structures search results for AI-friendly ingestion
+
+• What default behavior looks like (defaults, limits, included fields)
+
+• Why Tavily Search is built for agents rather than typical web-scraping
+
+
+
+
+
+
+
+------------------------------------- MOD 2 -------------------------------------
+
+
+
+
+
+
+Parameter	What It Controls	Default / Notes
+query (string)	The search keywords or natural language query	Required
+search_depth (str)	The depth of the search (how focused and thorough results are)	"basic" returns generic snippets; "advanced" returns more tailored, highly relevant content (higher latency, default: "basic")
+topic (str)	The search domain type - influences which search agent is used (e.g. general, news, finance)	"general" by default.
+time_range (str / int)	Time-filter for when source content was published - useful for freshness	Values like "day", "week", "month", "year" or short forms "d", "w", "m", "y".
+max_results (int)	How many results to return (i.e. cap on number of urls)	Default: 5 unless overridden.
+include_raw_content (bool)	Whether to return the full cleaned HTML/text content of each result (not just snippet)	Default false. "markdown" or true to return results content in markdown. "text" to return in plain text.
+include_images (bool)	If true, includes images related to the query in response	Default False. Useful for multimedia or image-based agent tasks.
+include_answer (bool or str)	Option to ask Tavily to generate a short answer (via LLM) based on search results	Default False. If "basic" or true returns a quick answer. "advanced" returns a more detailed answer.
+include_domains (list of strings)	Whitelist of domains. Only include results from these domains	Default None. Useful when you want authoritative sources only.
+exclude_domains (list of strings)	Blacklist of domains. Explicitly omit results from these domains	Default None. Helps filter out low-quality or irrelevant content.
+
+
+
+
+
+
+
+
+search_depth
+• Use "basic" when you want quick, lightweight searches with fewer results. Good for fast queries, small agents, or frequent calls.
+
+• Use "advanced" when you expect richer results, deeper coverage. Suitable for research agents, RAG pipelines, or when context matters.
+
+time_range + topic
+• When targeting current events, news, or time-sensitive data (e.g. latest product releases, regulatory updates), use topic = "news" and set time_range for freshness.
+
+• Helps avoid stale content.
+
+max_results
+• Lower values (e.g. lower than 10) reduce response size, and processing cost. Great for fast chatbots or simple lookups.
+
+• Higher values useful for research tasks, deep dives, or when you want broad coverage.
+
+include_raw_content
+Turn on when you need full article content (for summarization, analysis, RAG context) rather than just snippets.
+
+Use with care - raw content can be large and increases token usage when fed to LLMs.
+
+include_images
+Useful if your agent needs visual context, images for documentation, UI previews, or multimedia outputs. Only enable if the downstream workflow can process images.
+
+include_answer
+Handy when you want a quick summary answer without post-processing. Good for simple Q&A, chatbots. For more control or citations, you might skip this and handle result list + reasoning yourself.
+
+include_domains / exclude_domains
+• Use include_domains when you trust certain domains (e.g. docs, official sites) and want higher credibility.
+
+• Use exclude_domains to filter out irrelevant sources.
+
+• Useful in regulated contexts or when you need to control source provenance.
+
+
+------------------------   EXAAMPLE RICH CALLL------------------
+
+
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key="tvly-YOUR_API_KEY")
+
+response = tavily_client.search(
+    query="latest trends in generative AI 2025",
+    search_depth="advanced",
+    topic="news",
+    time_range="w",        # past week
+    max_results=10,
+    include_raw_content=True,
+    include_images=False,
+    include_answer=False,
+    exclude_domains=["some-spammy-site.com","low-quality-blog.org"]
+)
+
+for res in response["results"]:
+    print(res["title"], res["url"])
+    print(res["content"][:200], "...")
+
+
+
+
+Recommended Best Practices
+Here are Tavily's recommended practices and common patterns to optimize search usage.
+
+1. Use Sensible Defaults for Simple Queries
+For quick fact-lookups or basic informational queries, use default / minimal settings: low max_results, default search depth, no raw content extraction. This keeps latency low, results small, and limits overhead for context consumption by LLMs.
+
+2. Adjust Depth / Results Based on Task Complexity
+• For research, summarization, or RAG (retrieval-augmented generation) tasks needing deep context: increase search_depth, raise max_results, possibly enable include_raw_content.
+
+• For simple Q&A or single-fact retrieval: stick to basic depth and limited results.
+
+3. Use Domain Filters and Time Filters for Targeted Relevance
+• When the query requires trustworthy or authoritative sources, use include_domains (whitelist) to restrict results to known good domains.
+
+• Use exclude_domains to avoid low-quality or untrusted content.
+
+• For time-sensitive queries, apply recency filters (e.g. topic = "news", time_range/days) to prioritize fresh content.
+
+4. Cache and Reuse Results When Possible
+If your application or agent may run similar or repeated queries, cache results to avoid redundant API calls. This reduces cost and improves response time, especially for high-frequency queries.
+
+5. Combine Search with Other Tavily Tools Strategically
+• Use search for discovery of relevant links/pages.
+
+• If you need deeper content (full article, structured extraction), follow up with extract, crawl, or map where appropriate. This avoids overloading search results while giving richer content only when needed.
+
+• For RAG pipelines: search → extract → summarize/ingest into vector store. This pattern balances cost, depth, and performance.
+
+6. Account for Latency and Rate Limits
+• Typical response times are fast, but complex queries (advanced search) may take longer.
+
+• Respect rate limits of your plan. Avoid too many parallel heavy queries without throttling or batching.
+
+7. Use Structured Output - Avoid Parsing Raw HTML in Agent Logic
+Tavily returns clean, structured JSON optimized for LLMs and agents, this avoids brittle HTML scraping, reduces errors, and simplifies downstream logic.
+
+Sample Parameter Strategy by Use Case
+Use Case	Recommended Config / Strategy
+Quick fact lookup / Q&A	Default search settings, max_results = 5, no raw content, basic depth
+Up-to-date news / recent events	Use topic = "news", set time_range to "day" or "week", limit results, optionally include raw content for summarization
+Research / summarization / RAG	search_depth = advanced, max_results = 10–20, enable include_raw_content, caching + follow-up extraction
+Trusted-source retrieval (docs, spec)	Use include_domains whitelist, maybe combine with domain-specific crawls or extract calls
+High-volume or batch queries	Cache results, rate-limit, batch queries, reuse previous outputs where possible
+Example: Optimized Search Call for a Research Agent
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key="YOUR_API_KEY")
+
+response = tavily_client.search(
+    query="2025 trends in web-agent search APIs",
+    search_depth="advanced",
+    max_results=10,
+    include_raw_content=True,
+    include_images=False,
+    include_answer=False,
+    exclude_domains=["spammy-site.com","low-quality-blog.org"]
+)
+This setup balances depth and breadth, fetches full content for analysis, but avoids irrelevant or low-quality sources, keeping results cleaner and more relevant.
+
+Why These Practices Matter for Production Agents
+By following these best practices, agents built on Tavily:
+
+• Run faster, giving near real-time responses for simple queries.
+
+• Consume fewer API credits per useful result, cost-efficient at scale.
+
+• Generate cleaner context for LLMs, reduces hallucinations and context noise.
+
+• Scale gracefully, high-volume or batch workloads remain manageable.
+
+• Maintain content quality, using trusted sources and fresh data when necessary.
+
+This turns Tavily Search from a convenient developer tool into a reliable, production-grade building block for AI agents and RAG apps.
+
+
+
+
+
+
+This unit walks through how to perform simple search queries with Tavily and explains what you get back. It also highlights why Tavily Search is well-suited for agent and RAG workflows.
+
+Why Tavily Search is Agent-Ready
+• Tavily is built specifically for AI agents, not just human-facing search results. The output is optimized to feed directly into LLMs or processing RAG pipelines.
+
+• Compared to traditional search engines, Tavily returns clean, structured results (titles, links, snippets or content), reducing noise and making downstream processing simpler and more reliable.
+
+• Integration is straightforward: you can call the API using SDKs (e.g. Python or JS) or via HTTP request.
+
+How to Perform a Basic Search
+First install the Tavily Python SDK:
+
+pip install tavily-python
+Here's a minimal example to run a search with Tavily:
+
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key="tvly-YOUR_API_KEY")
+
+response = tavily_client.search("Who is Leo Messi?")
+
+print(response)
+Note: Replace tvly-YOUR_API_KEY with your actual API key from Tavily dashboard.
+
+Passing your Tavily API key
+When calling Tavily over HTTP (for example with fetch or requests), pass your API key in the Authorization header.
+
+import requests
+
+headers = {
+    "Authorization": "Bearer tvly-YOUR_API_KEY",
+}
+
+response = requests.post(
+    "https://api.tavily.com/search",
+    json={"query": "Who is Leo Messi?"},
+    headers=headers,
+)
+
+print(response.json())
+Here's a sample response:
+
+{
+  "query": "Who is Leo Messi?",
+  "answer": "Lionel Messi, born in 1987...",
+  "images": [],
+  "results": [
+    {
+      "title": "Lionel Messi Facts | Britannica",
+      "url": "https://www.britannica.com/facts/Lionel-Messi",
+      "content": "Lionel Messi, an Argentine footballer...",
+      "score": 0.81025416,
+      "raw_content": null,
+      "favicon": "https://britannica.com/favicon.png"
+    }
+  ],
+  "auto_parameters": {
+    "topic": "general",
+    "search_depth": "basic"
+  },
+  "response_time": "1.17",
+  "request_id": "123e4567-e89b-12d3-a456-426614174111"
+}
+Default Behavior and Limits
+• By default, Tavily returns up to 5 results per search if you don't override max_results.
+
+• You control what's returned: whether to include raw content, snippets, images, answer generation, etc.
+
+• The results are ranked using Tavily's internal relevance and scoring mechanisms to surface the most relevant and trustworthy sources.
+
+Why This Matters for Agents
+Using Tavily Search as-is gives you:
+
+• Clean, structured results that are easy for LLMs to consume
+
+• Lower chance of junk data from scraping or messy HTML
+
+• A simple, consistent integration path - agents built on it are easier to maintain
+
+• Real-time access to up-to-date web content, improving answer relevance and freshness
+
+These properties align perfectly with common use cases like building chat assistants, research agents, tools for data enrichment, or any RAG-based application.
+
+
+
+
+
+Understanding how to configure your search parameters is key to making agents that return relevant, reliable and efficient results. In this unit we describe each parameter exposed by Tavily Search, what it controls, and recommended use cases.
+
+Supported Parameters
+When you call Tavily's Search API (or use the SDK), you can pass a variety of parameters. Key ones include: query, search_depth, topic, time_range, max_results, include_domains, exclude_domains, include_raw_content, include_images, include_answer.
+
+Parameter	What It Controls	Default / Notes
+query (string)	The search keywords or natural language query	Required
+search_depth (str)	The depth of the search (how focused and thorough results are)	"basic" returns generic snippets; "advanced" returns more tailored, highly relevant content (higher latency, default: "basic")
+topic (str)	The search domain type - influences which search agent is used (e.g. general, news, finance)	"general" by default.
+time_range (str / int)	Time-filter for when source content was published - useful for freshness	Values like "day", "week", "month", "year" or short forms "d", "w", "m", "y".
+max_results (int)	How many results to return (i.e. cap on number of urls)	Default: 5 unless overridden.
+include_raw_content (bool)	Whether to return the full cleaned HTML/text content of each result (not just snippet)	Default false. "markdown" or true to return results content in markdown. "text" to return in plain text.
+include_images (bool)	If true, includes images related to the query in response	Default False. Useful for multimedia or image-based agent tasks.
+include_answer (bool or str)	Option to ask Tavily to generate a short answer (via LLM) based on search results	Default False. If "basic" or true returns a quick answer. "advanced" returns a more detailed answer.
+include_domains (list of strings)	Whitelist of domains. Only include results from these domains	Default None. Useful when you want authoritative sources only.
+exclude_domains (list of strings)	Blacklist of domains. Explicitly omit results from these domains	Default None. Helps filter out low-quality or irrelevant content.
+When and How to Use Each Parameter
+search_depth
+• Use "basic" when you want quick, lightweight searches with fewer results. Good for fast queries, small agents, or frequent calls.
+
+• Use "advanced" when you expect richer results, deeper coverage. Suitable for research agents, RAG pipelines, or when context matters.
+
+time_range + topic
+• When targeting current events, news, or time-sensitive data (e.g. latest product releases, regulatory updates), use topic = "news" and set time_range for freshness.
+
+• Helps avoid stale content.
+
+max_results
+• Lower values (e.g. lower than 10) reduce response size, and processing cost. Great for fast chatbots or simple lookups.
+
+• Higher values useful for research tasks, deep dives, or when you want broad coverage.
+
+include_raw_content
+Turn on when you need full article content (for summarization, analysis, RAG context) rather than just snippets.
+
+Use with care - raw content can be large and increases token usage when fed to LLMs.
+
+include_images
+Useful if your agent needs visual context, images for documentation, UI previews, or multimedia outputs. Only enable if the downstream workflow can process images.
+
+include_answer
+Handy when you want a quick summary answer without post-processing. Good for simple Q&A, chatbots. For more control or citations, you might skip this and handle result list + reasoning yourself.
+
+include_domains / exclude_domains
+• Use include_domains when you trust certain domains (e.g. docs, official sites) and want higher credibility.
+
+• Use exclude_domains to filter out irrelevant sources.
+
+• Useful in regulated contexts or when you need to control source provenance.
+
+Best Practices & Parameter Combinations
+• For general knowledge queries: default parameters (search_depth = basic, max_results = 5) often suffice.
+
+• For research or summary tasks: set search_depth = advanced, max_results higher, and include_raw_content = True to gather full context.
+
+• For news/time-sensitive queries: set topic = news, time_range = "day" or "week" to ensure recency.
+
+• To reduce noise and improve reliability: combine include_domains (trusted sources) + exclude_domains (blacklist irrelevant sources).
+
+• When feeding results into an LLM: use structured output like markdown rather than raw HTML from scraping - Tavily handles parsing.
+
+Example Usage
+Here's a sample Python snippet using a parameter-rich search call:
+
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key="tvly-YOUR_API_KEY")
+
+response = tavily_client.search(
+    query="latest trends in generative AI 2025",
+    search_depth="advanced",
+    topic="news",
+    time_range="w",        # past week
+    max_results=10,
+    include_raw_content=True,
+    include_images=False,
+    include_answer=False,
+    exclude_domains=["some-spammy-site.com","low-quality-blog.org"]
+)
+
+for res in response["results"]:
+    print(res["title"], res["url"])
+    print(res["content"][:200], "...")
+This query tries to fetch recent, relevant news results, get full content for deeper processing, and filter out low-quality domains.
+
+Why Parameter Control Matters for Agents
+• Relevance and reliability: Domain filters, recency parameters, and content toggles give you control over quality of sources - essential for production-grade agents.
+
+• Flexibility for different tasks: From quick answers to deep research, you can tailor search behavior per use-case.
+
+• Cleaner integration: Structured output (via raw content or snippets) means less downstream parsing, easier token budgeting, better LLM context.
+
+Summary
+Tavily Search is powerful but only if used correctly. By leveraging parameters thoughtfully, you can balance between speed, cost, relevance, depth, and reliability. Key takeaways:
+
+• Always set query.
+
+• Use search_depth, max_results, topic, time_range, and domain filters to shape search behavior.
+
+• Use include_raw_content when you need full content for deep tasks.
+
+• Use domain filters to manage trust and quality.
+
+• Combine parameters based on your task: quick lookups vs deep research vs news scraping vs RAG context feeding.
+
+
+
+
+
+
+When building agents or applications that use Tavily Search heavily, it's not enough to know what parameters you can set. You also need to understand how to use them wisely to balance cost, speed, reliability, and result quality. This unit covers Tavily-recommended best practices, optimization strategies, and trade-offs.
+
+Why Optimization Matters with Tavily Search
+• Tavily is designed for AI agents and real-time web access. Its structured results help avoid noise and messy scraping that typical search + HTML parsing workflows introduce.
+
+• Improper usage (e.g. always high-depth, full-content fetch, large max_results) can lead to high latency, high token usage, increased cost, and slower agent response times.
+
+• Smart configuration ensures fast, relevant results with controlled resource consumption and better user experience.
+
+Recommended Best Practices
+Here are Tavily's recommended practices and common patterns to optimize search usage.
+
+1. Use Sensible Defaults for Simple Queries
+For quick fact-lookups or basic informational queries, use default / minimal settings: low max_results, default search depth, no raw content extraction. This keeps latency low, results small, and limits overhead for context consumption by LLMs.
+
+2. Adjust Depth / Results Based on Task Complexity
+• For research, summarization, or RAG (retrieval-augmented generation) tasks needing deep context: increase search_depth, raise max_results, possibly enable include_raw_content.
+
+• For simple Q&A or single-fact retrieval: stick to basic depth and limited results.
+
+3. Use Domain Filters and Time Filters for Targeted Relevance
+• When the query requires trustworthy or authoritative sources, use include_domains (whitelist) to restrict results to known good domains.
+
+• Use exclude_domains to avoid low-quality or untrusted content.
+
+• For time-sensitive queries, apply recency filters (e.g. topic = "news", time_range/days) to prioritize fresh content.
+
+4. Cache and Reuse Results When Possible
+If your application or agent may run similar or repeated queries, cache results to avoid redundant API calls. This reduces cost and improves response time, especially for high-frequency queries.
+
+5. Combine Search with Other Tavily Tools Strategically
+• Use search for discovery of relevant links/pages.
+
+• If you need deeper content (full article, structured extraction), follow up with extract, crawl, or map where appropriate. This avoids overloading search results while giving richer content only when needed.
+
+• For RAG pipelines: search → extract → summarize/ingest into vector store. This pattern balances cost, depth, and performance.
+
+6. Account for Latency and Rate Limits
+• Typical response times are fast, but complex queries (advanced search) may take longer.
+
+• Respect rate limits of your plan. Avoid too many parallel heavy queries without throttling or batching.
+
+7. Use Structured Output - Avoid Parsing Raw HTML in Agent Logic
+Tavily returns clean, structured JSON optimized for LLMs and agents, this avoids brittle HTML scraping, reduces errors, and simplifies downstream logic.
+
+Sample Parameter Strategy by Use Case
+Use Case	Recommended Config / Strategy
+Quick fact lookup / Q&A	Default search settings, max_results = 5, no raw content, basic depth
+Up-to-date news / recent events	Use topic = "news", set time_range to "day" or "week", limit results, optionally include raw content for summarization
+Research / summarization / RAG	search_depth = advanced, max_results = 10–20, enable include_raw_content, caching + follow-up extraction
+Trusted-source retrieval (docs, spec)	Use include_domains whitelist, maybe combine with domain-specific crawls or extract calls
+High-volume or batch queries	Cache results, rate-limit, batch queries, reuse previous outputs where possible
+Example: Optimized Search Call for a Research Agent
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key="YOUR_API_KEY")
+
+response = tavily_client.search(
+    query="2025 trends in web-agent search APIs",
+    search_depth="advanced",
+    max_results=10,
+    include_raw_content=True,
+    include_images=False,
+    include_answer=False,
+    exclude_domains=["spammy-site.com","low-quality-blog.org"]
+)
+This setup balances depth and breadth, fetches full content for analysis, but avoids irrelevant or low-quality sources, keeping results cleaner and more relevant.
+
+Why These Practices Matter for Production Agents
+By following these best practices, agents built on Tavily:
+
+• Run faster, giving near real-time responses for simple queries.
+
+• Consume fewer API credits per useful result, cost-efficient at scale.
+
+• Generate cleaner context for LLMs, reduces hallucinations and context noise.
+
+• Scale gracefully, high-volume or batch workloads remain manageable.
+
+• Maintain content quality, using trusted sources and fresh data when necessary.
+
+This turns Tavily Search from a convenient developer tool into a reliable, production-grade building block for AI agents and RAG apps.
+
+
+
+1. Tavily Search Fundamentals
+You explored how Tavily provides structured, agent-ready search results. Instead of messy HTML or SERP-like output, Tavily returns clean JSON that agents can use directly without complex parsing. You also learned how simple it is to run a basic search using the Python or JavaScript SDKs or via direct HTTP requests.
+
+2. Key Search Parameters
+You learned how to guide and shape search behavior using parameters such as:
+
+• search_depth for basic or advanced searches
+
+• topic for general vs news-focused queries
+
+• time_range for recency filtering
+
+• max_results to control breadth and cost
+
+• include_raw_content to retrieve full cleaned web page content
+
+• include_images for visual-rich queries
+
+• include_domains and exclude_domains to manage content quality and trust
+
+These parameters give you fine-grained control over relevance, coverage, cost, and latency.
+
+3. Optimization & Best Practices
+You studied best practices for building cost-efficient, high-performance search workflows:
+
+• Use defaults for quick answers
+
+• Increase depth/results only when necessary
+
+• Apply recency and domain filters for specialized tasks
+
+• Cache repeated queries to reduce cost
+
+• Use raw content only when deeper reasoning is needed
+
+These patterns help agents stay efficient, responsive, and reliable as workload scales.
+
+Final Takeaway
+Tavily Search is highly flexible. Whether you're building a simple chatbot or a multi-step research agent, you can adapt search behavior to your exact needs. By understanding the parameters, defaults, and best practices, you can ensure your agent retrieves the most relevant and trustworthy information with the lowest possible cost and latency.
+
+
+
+
+
+https://docs.tavily.com/sdk/python/reference
+
+
+Introduction
+This module covers Tavily's advanced web-exploration tools: Extract, Crawl, and Map. These tools let agents go beyond simple search and retrieve full-page content, explore entire domains, or understand a site's link structure. You'll learn how each tool works, when to use it, and how they help agents gather richer, cleaner, and more reliable information.
+
+Imagine you're building a research assistant that needs to read full articles, scan documentation sites, or understand how pages on a domain connect. Search alone can't provide that depth. Extract gives you full clean text for any URL, Crawl lets your agent traverse a website at multiple levels, and Map builds a link graph to show how pages relate. Together, they unlock deeper, structured exploration.
+
+In this module, you will learn about:
+
+• When to use Extract and what full clean text includes
+• How Crawl works, including depth levels, filtering, and runtime considerations
+• What Map is and how it generates link graphs
+• How to combine Crawl, Map, and Extract for domain-level research
+• Responsible crawling practices such as robots.txt and rate limits
+
+
+What is Tavily Extract and When to Use It
+Tavily Extract is an API endpoint that retrieves the full cleaned content of one or more webpages given their URLs, not just chunks, but the actual page text (and optional images/metadata) in a clean format.
+
+Use it when:
+
+• You need more than just brief snippets (e.g. full articles, documentation pages, long-form content).
+
+• Your agent needs entire page context, for summarization, quoting, data extraction, or deeper analysis.
+
+• You want to avoid brittle HTML parsing yourself, Tavily handles cleaning and structuring.
+
+This makes Extract ideal for use cases like report generation, long-form summarization, content ingestion pipelines, documentation crawlers, or research agents that need full context.
+
+How Extract Provides Full Clean Text
+When you call the Extract endpoint via the SDK or API, the response includes, for each requested URL:
+
+• raw_content: the cleaned main text content of the page (no HTML noise).
+
+• Optionally images, metadata (depending on parameters) if you request them.
+
+• The URLs you passed, so you know the source.
+
+This structured and cleaned output is purpose-built for LLMs and agent workflows, making downstream reasoning, summarization, or ingestion much simpler.
+
+Example Request + Response (Python SDK)
+Here's a simple example using the official Tavily Python SDK to extract content from a webpage:
+
+from tavily import TavilyClient
+
+client = TavilyClient(api_key="tvly-YOUR_API_KEY")
+
+response = client.extract(
+    urls=["https://en.wikipedia.org/wiki/Artificial_intelligence"],
+    extract_depth="basic"  # or "advanced"
+)
+
+for res in response["results"]:
+    print("URL:", res["url"])
+    print("Content (start):", res["raw_content"][:300])
+Expected simplified response structure:
+
+{
+  "results": [
+    {
+      "url": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+      "raw_content": "Artificial intelligence (AI) is intelligence demonstrated by machines...",
+      "images": [],
+      // possibly other metadata fields
+    }
+  ],
+  "failed_results": [],
+  "response_time": 0.8
+}
+Note: There is a practical limit of up to 20 URLs per Extract request, requests with more than 20 URLs will return a 400 error.
+
+Comparison: Search vs Extract
+Use-case or Requirement	Use Tavily Search	Use Tavily Extract
+Quick fact lookup or short answers	✅	❌ (Overkill)
+Getting titles, URLs, snippets for many pages	✅	❌
+Need full article/document content for summarization or indexing	❌ (Snippets only)	✅
+Building a knowledge base, ingestion pipeline, or long-form summarization	❌ (Incomplete)	✅
+Low latency, minimal token usage tasks	✅	❌ (Potentially large content)
+Best Practices When Using Extract
+• Use a two-step process for reliability: first use Search to find relevant URLs, then use Extract only on top results, this reduces noise and avoids extracting irrelevant pages.
+
+• For complex or dynamic web pages (with embedded media, structured data, tables), use extract_depth = "advanced" for better coverage.
+
+• Avoid bulk extracting large numbers of URLs, respect the limit (≤ 20 URLs per request). If you need more, split into batches.
+
+• Combine Extract with domain filters, recency filters, or other heuristics (from search) to prioritize high-quality, relevant sources before extraction.
+
+
+
+
+This unit covers Tavily's two site-level tools—Crawl and Map: what each does, when to use them, how to configure them, and how they work together (often alongside Extract) in real agent workflows.
+
+What is Tavily Crawl
+Tavily Crawl is a graph-based website traversal tool that lets your agent explore many links in parallel across a website, following hyperlinks, discovering pages, and fetching their content automatically.
+
+It is useful when you need to scrape or index multiple pages under a domain: documentation sites, blogs, archives, product catalogs, or any site with many nested or paginated sections.
+
+What is Tavily Map
+Map is Tavily's structure-first tool: it walks a site like a graph and returns a list of URLs (a sitemap) starting from a root URL, without extracting full content. Use it when you want to understand what's on a site before paying to ingest everything.
+
+• Great for building URL indexes for docs sites, blogs, or wikis.
+
+• Helps reveal navigation structure and page hierarchy.
+
+• Often used as a first step before selective Extract or focused Crawl.
+
+Note: The Crawl and Map endpoints currently are in Beta.
+
+Key Crawl Parameters & How They Control the Crawl
+When calling the Crawl API (via SDK or HTTP), you can configure how deep and wide the crawl goes. Key parameters include:
+
+Parameter	What It Controls
+url (string)	The base URL from where the crawl begins (root domain or subdomain)
+max_depth (int)	How many link-hops away from the root the crawl can reach (e.g. 1 = only pages directly linked, 2 = pages linked from those pages, etc.)
+max_breadth (int)	How many links per page the crawler will follow (i.e. how wide each level of traversal is)
+limit (int)	Total number of links/pages the crawl will process before stopping, useful to cap cost and runtime
+select_paths / select_domains (string[])	Regex filters to include only URLs matching certain path patterns or domains (e.g. /blog/.*, only docs subdomain)
+exclude_paths / exclude_domains (string[])	Regex filters to exclude certain paths/domains (e.g. /private/.*, admin pages)
+allow_external (bool)	Whether links to external domains are allowed (if you want to stay within the same domain or permit external links)
+extract_depth (enum: "basic" or "advanced")	Controls how the crawl extracts content from each page: basic may fetch main text; advanced tries to include embedded content, tables, etc.
+include_images (bool)	Optionally include image data from pages, useful when extracting multimedia or rich content
+instructions (string)	Natural language instructions for the crawler.
+These parameters give you fine-grained control over how deep, broad, and focused your crawl is, letting you trade off between coverage, cost, and runtime.
+
+When to Use Crawl vs Map vs Extract
+• Use Crawl when you need full content extraction across many pages, for documentation ingestion, content mining, building knowledge bases, RAG pre-processing, or analyzing deeply nested sites.
+
+• Use Map when you only need a sitemap or URL list without extracting full page content, good for structural analysis, link audits, or deciding what to extract later.
+
+• Extract (from Unit 1) is best when you already have specific URLs and just need full content for those pages, for example, summarizing an article or fetching a known documentation page.
+
+• In many workflows, Map → Extract is a powerful combo: Map the site to discover relevant URLs, then extract full content only from selected ones.
+
+Example Crawl Request + Typical Use-case
+Here's a sample usage using the Python SDK:
+
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key="tvly-YOUR_API_KEY")
+
+response = tavily_client.crawl(
+    url="https://docs.tavily.com",
+    max_depth=3,
+    max_breadth=30,
+    limit=100,
+    select_paths=["/documentation/.*", "/sdk/.*"],
+    exclude_paths=["/private/.*", "/admin/.*"],
+    allow_external=False,
+    extract_depth="advanced",
+    include_images=False
+)
+
+for page in response["results"]:
+    print(page["url"])
+    print(page["raw_content"][:200], "...")
+Use-case example: Crawl the docs site to gather all documentation pages (SDK docs, API reference, tutorials), then extract full clean content to build a searchable knowledge base or vector store.
+
+This is exactly how a "Crawl → RAG" pipeline works: crawl, extract, embed, and query later for retrieval-augmented generation.
+
+Cost, Runtime & Limitations
+• Runtime and cost depend heavily on parameters: deeper crawls, high breadth, high limits, and advanced extraction will take more time and consume more credits.
+
+• Because Crawl may visit many pages, it's recommended to apply filters (select_paths, select_domains, etc.) to avoid irrelevant sections and limit noise.
+
+• For very large sites, combining Crawl with path filters and reasonable limits helps avoid over-crawling and excessive cost / rate-limit issues.
+
+• If you only need page URLs (not full content), consider using Map instead, faster and cheaper.
+
+When Crawl Is Especially Useful
+• Building full documentation indexes for SDKs, libraries, or products
+
+• Aggregating entire websites for content search or vector stores
+
+• Crawling blogs, changelogs, or archived content that's not exposed via search APIs
+
+• Ingesting long-tailed or deeply nested content (e.g. paginated archives, nested directories, internal docs)
+
+• Automating site-wide audits or content migrations
+
+
+
+
+
+
+1. Tavily Extract
+You learned how Extract retrieves full cleaned text from webpages, giving agents complete context for summarization, analysis, and ingestion. You saw how Extract differs from Search, when to use it, and how to request full content or metadata through the API.
+
+You also reviewed example requests and understood why Extract is essential for long-form research, documentation agents, and content pipelines.
+
+2. Tavily Crawl
+You explored how Crawl scans multiple pages across a domain by following links to a specified depth and breadth. You learned how parameters like max_depth, max_breadth, limit, and path filters control coverage, performance, and cost.
+
+You also reviewed when Crawl is more appropriate than Search or Extract, how to combine it with Extract for RAG pipelines, and what limitations and runtime considerations to keep in mind.
+
+3. Tavily Map
+You learned how Map builds a lightweight URL graph or sitemap from any domain. Unlike Crawl, Map does not extract content; it focuses on discovering the site's structure. You saw when Map is preferable, how to configure it with domain and path filters, and how to use it as the first step in structured research or ingestion workflows.
+
+You also covered how to combine Map + Extract or Map + Crawl to prioritize which URLs to process next.
+
+Final Takeaway
+Extract, Crawl, and Map give agents powerful tools for gathering and understanding web content at scale. By choosing the right tool for each task and combining them effectively, you can build advanced research agents, domain-wide ingestion pipelines, and structured exploration workflows that go far beyond basic search.
+
+
+
+
+{
+  "base_url": "docs.tavily.com",
+  "results": [
+    "https://docs.tavily.com/welcome",
+    "https://docs.tavily.com/documentation/api-credits",
+    "https://docs.tavily.com/documentation/about"
+  ],
+  "response_time": 1.23,
+  "usage": {
+    "credits": 1
+  },
+  "request_id": "123e4567-e89b-12d3-a456-426614174111"
+}
+
+
+
+
+
+
+# Vercel AI SDK
+
+> Integrate Tavily with Vercel AI SDK to enhance your AI agents with powerful web search, content extraction, crawling, and site mapping capabilities.
+
+## Introduction
+
+The `@tavily/ai-sdk` package provides pre-built AI SDK tools for Vercel's AI SDK v5, making it easy to add real-time web search, content extraction, intelligent crawling, and site mapping to your AI applications.
+
+## Step-by-Step Integration Guide
+
+### Step 1: Install Required Packages
+
+Install the necessary packages:
+
+```bash  theme={null}
+npm install ai @ai-sdk/openai @tavily/ai-sdk
+```
+
+### Step 2: Set Up API Keys
+
+* **Tavily API Key:** [Get your Tavily API key here](https://app.tavily.com/home)
+* **OpenAI API Key:** [Get your OpenAI API key here](https://platform.openai.com/account/api-keys)
+
+Set these as environment variables:
+
+```bash  theme={null}
+export TAVILY_API_KEY=tvly-your-api-key
+export OPENAI_API_KEY=your-openai-api-key
+```
+
+### Step 3: Basic Usage
+
+The simplest way to get started with Tavily Search:
+
+```typescript  theme={null}
+import { tavilySearch } from "@tavily/ai-sdk";
+import { generateText, stepCountIs } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const result = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "What are the latest developments in quantum computing?",
+  tools: {
+    tavilySearch: tavilySearch(),
+  },
+  stopWhen: stepCountIs(3),
+});
+
+console.log(result.text);
+```
+
+## Available Tools
+
+### Tavily Search
+
+Real-time web search optimized for AI applications:
+
+```typescript  theme={null}
+import { tavilySearch } from "@tavily/ai-sdk";
+import { generateText, stepCountIs } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const result = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "Research the latest trends in renewable energy technology",
+  tools: {
+    tavilySearch: tavilySearch({
+      searchDepth: "advanced",
+      includeAnswer: true,
+      maxResults: 5,
+      topic: "general",
+    }),
+  },
+  stopWhen: stepCountIs(3),
+});
+```
+
+**Key Configuration Options:**
+
+* `searchDepth?: "basic" | "advanced"` - Search depth (default: "basic")
+* `topic?: "general" | "news" | "finance"` - Search category
+* `includeAnswer?: boolean` - Include AI-generated answer
+* `maxResults?: number` - Maximum results to return (default: 5)
+* `includeImages?: boolean` - Include images in results
+* `timeRange?: "year" | "month" | "week" | "day"` - Time range for results
+* `includeDomains?: string[]` - Domains to include
+* `excludeDomains?: string[]` - Domains to exclude
+
+### Tavily Extract
+
+Clean, structured content extraction from URLs:
+
+```typescript  theme={null}
+import { tavilyExtract } from "@tavily/ai-sdk";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const result = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "Extract and summarize the content from https://tavily.com",
+  tools: {
+    tavilyExtract: tavilyExtract(),
+  },
+});
+```
+
+**Key Configuration Options:**
+
+* `extractDepth?: "basic" | "advanced"` - Extraction depth
+* `format?: "markdown" | "text"` - Output format (default: "markdown")
+* `includeImages?: boolean` - Include images in extracted content
+
+### Tavily Crawl
+
+Intelligent website crawling at scale:
+
+```typescript  theme={null}
+import { tavilyCrawl } from "@tavily/ai-sdk";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const result = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "Crawl tavily.com and tell me about their integrations",
+  tools: {
+    tavilyCrawl: tavilyCrawl({
+      maxDepth: 2,
+      limit: 50,
+    }),
+  },
+});
+```
+
+**Key Configuration Options:**
+
+* `maxDepth?: number` - Maximum crawl depth (1-5, default: 1)
+* `maxBreadth?: number` - Maximum pages per depth level (1-100, default: 20)
+* `limit?: number` - Maximum total pages to crawl (default: 50)
+* `extractDepth?: "basic" | "advanced"` - Content extraction depth
+* `instructions?: string` - Natural language crawling instructions
+* `selectPaths?: string[]` - Path patterns to include
+* `excludePaths?: string[]` - Path patterns to exclude
+* `allowExternal?: boolean` - Allow crawling external domains
+
+### Tavily Map
+
+Website structure discovery and mapping:
+
+```typescript  theme={null}
+import { tavilyMap } from "@tavily/ai-sdk";
+import { generateText, stepCountIs } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const result = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "Map the structure of tavily.com",
+  tools: {
+    tavilyMap: tavilyMap(),
+  },
+  stopWhen: stepCountIs(3),
+});
+```
+
+**Key Configuration Options:**
+
+* `maxDepth?: number` - Maximum mapping depth (1-5, default: 1)
+* `maxBreadth?: number` - Maximum pages per depth level (1-100, default: 20)
+* `limit?: number` - Maximum total pages to map (default: 50)
+* `instructions?: string` - Natural language mapping instructions
+* `selectPaths?: string[]` - Path patterns to include
+* `excludePaths?: string[]` - Path patterns to exclude
+* `allowExternal?: boolean` - Allow mapping external domains
+
+## Using Multiple Tools Together
+
+You can combine multiple Tavily tools in a single AI agent for comprehensive research capabilities:
+
+```typescript  theme={null}
+import { 
+  tavilySearch, 
+  tavilyExtract, 
+  tavilyCrawl, 
+  tavilyMap 
+} from "@tavily/ai-sdk";
+import { generateText, stepCountIs } from "ai";
+import { openai } from "@ai-sdk/openai";
+
+const result = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "Research the company at tavily.com - search for news, map their site, and extract key pages",
+  tools: {
+    tavilySearch: tavilySearch({ searchDepth: "advanced" }),
+    tavilyExtract: tavilyExtract(),
+    tavilyCrawl: tavilyCrawl(),
+    tavilyMap: tavilyMap(),
+  },
+  stopWhen: stepCountIs(5),
+});
+```
+
+## Advanced Examples
+
+### News Research with Time Range
+
+```typescript  theme={null}
+const newsResult = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "What are the top technology news stories from this week?",
+  tools: {
+    tavilySearch: tavilySearch({
+      topic: "news",
+      timeRange: "week",
+      maxResults: 10,
+    }),
+  },
+  stopWhen: stepCountIs(3),
+});
+```
+
+### Market Analysis with Advanced Search
+
+```typescript  theme={null}
+const marketResult = await generateText({
+  model: openai("gpt-5-mini"),
+  prompt: "Analyze the current state of the electric vehicle market",
+  tools: {
+    tavilySearch: tavilySearch({
+      searchDepth: "advanced",
+      topic: "finance",
+      includeAnswer: true,
+      maxResults: 10,
+    }),
+  },
+  stopWhen: stepCountIs(5),
+});
+```
+
+## Benefits of Tavily + Vercel AI SDK
+
+* **Pre-built Tools:** No need to manually create tool definitions - just import and use
+* **Type-Safe:** Full TypeScript support with proper type definitions
+* **Real-time Information:** Access up-to-date web content for your AI agents
+* **Optimized for LLMs:** Search results are specifically formatted for language models
+* **Multiple Capabilities:** Search, extract, crawl, and map websites - all in one package
+* **Easy Integration:** Works seamlessly with Vercel AI SDK v5
+* **Flexible Configuration:** Extensive configuration options for all tools
+* **Production-Ready:** Built on the reliable Tavily API infrastructure
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.tavily.com/llms.txt
+
+
+# Streaming
+
+> Stream real-time research progress and results from Tavily Research API
+
+## Overview
+
+When using the Tavily Research API, you can stream responses in real-time by setting `stream: true` in your request. This allows you to receive research progress updates, tool calls, and final results as they're generated, providing a better user experience for long-running research tasks.
+
+Streaming is particularly useful for:
+
+* Displaying research progress to users in real-time
+* Monitoring tool calls and search queries as they execute
+* Receiving incremental updates during lengthy research operations
+* Building interactive research interfaces
+
+## Enabling Streaming
+
+To enable streaming, set the `stream` parameter to `true` when making a request to the Research endpoint:
+
+```json  theme={null}
+{
+  "input": "What are the latest developments in AI?",
+  "stream": true
+}
+```
+
+The API will respond with a `text/event-stream` content type, sending Server-Sent Events (SSE) as the research progresses.
+
+## Event Structure
+
+Each streaming event follows a consistent structure compatible with the OpenAI chat completions format:
+
+```json  theme={null}
+{
+  "id": "123e4567-e89b-12d3-a456-426614174111",
+  "object": "chat.completion.chunk",
+  "model": "mini",
+  "created": 1705329000,
+  "choices": [
+    {
+      "delta": {
+        // Event-specific data here
+      }
+    }
+  ]
+}
+```
+
+### Core Fields
+
+| Field     | Type    | Description                                                  |
+| --------- | ------- | ------------------------------------------------------------ |
+| `id`      | string  | Unique identifier for the stream event                       |
+| `object`  | string  | Always `"chat.completion.chunk"` for streaming events        |
+| `model`   | string  | The research model being used (e.g., `"mini"`, `"standard"`) |
+| `created` | integer | Unix timestamp when the event was created                    |
+| `choices` | array   | Array containing the delta with event details                |
+
+## Event Types
+
+The streaming response includes different types of events in the `delta` object. Here are the main event types you'll encounter:
+
+### 1. Tool Call Events
+
+When the research agent performs actions like web searches, you'll receive tool call events:
+
+```json  theme={null}
+{
+  "id": "evt_002",
+  "object": "chat.completion.chunk",
+  "model": "mini",
+  "created": 1705329005,
+  "choices": [
+    {
+      "delta": {
+        "role": "assistant",
+        "tool_calls": {
+          "type": "tool_call",
+          "tool_call": [
+            {
+              "name": "WebSearch",
+              "id": "fc_633b5932-e66c-4523-931a-04a7b79f2578",
+              "arguments": "Executing 5 search queries"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+**Tool Call Delta Fields:**
+
+| Field       | Type   | Description                                           |
+| ----------- | ------ | ----------------------------------------------------- |
+| `type`      | string | Either `"tool_call"` or `"tool_response"`             |
+| `tool_call` | array  | Details about the tool being invoked                  |
+| `name`      | string | Name of the tool (e.g., `"WebSearch"`, `"WebScrape"`) |
+| `id`        | string | Unique identifier for the tool call                   |
+| `arguments` | string | Description of the action being performed             |
+
+### 2. Tool Response Events
+
+After a tool executes, you'll receive response events:
+
+```json  theme={null}
+{
+  "id": "evt_003",
+  "object": "chat.completion.chunk",
+  "model": "mini",
+  "created": 1705329010,
+  "choices": [
+    {
+      "delta": {
+        "role": "assistant",
+        "tool_calls": {
+          "type": "tool_response",
+          "tool_response": [
+            {
+              "name": "WebSearch",
+              "id": "fc_633b5932-e66c-4523-931a-04a7b79f2578",
+              "arguments": "Completed executing search tool call"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+### 3. Content Events
+
+The final research report is streamed as content:
+
+```json  theme={null}
+{
+  "id": "evt_004",
+  "object": "chat.completion.chunk",
+  "model": "mini",
+  "created": 1705329015,
+  "choices": [
+    {
+      "delta": {
+        "role": "assistant",
+        "content": "# Research Report\n\nBased on the latest sources..."
+      }
+    }
+  ]
+}
+```
+
+**Content Field:**
+
+* Can be a **string** (markdown-formatted report) when no `output_schema` is provided
+* Can be an **object** (structured data) when an `output_schema` is specified
+
+## Handling Streaming Responses
+
+### Python Example
+
+```python  theme={null}
+from tavily import TavilyClient
+
+# Step 1. Instantiating your TavilyClient
+tavily_client = TavilyClient(api_key="tvly-YOUR_API_KEY")
+
+# Step 2. Creating a streaming research task
+stream = tavily_client.research(
+    input="Research the latest developments in AI",
+    model="pro",
+    stream=True
+)
+
+for chunk in stream:
+    print(chunk.decode('utf-8'))
+```
+
+### JavaScript Example
+
+```javascript  theme={null}
+const { tavily } = require("@tavily/core");
+
+const tvly = tavily({ apiKey: "tvly-YOUR_API_KEY" });
+
+const stream = await tvly.research("Research the latest developments in AI", {
+  model: "pro",
+  stream: true,
+});
+
+for await (const chunk of result as AsyncGenerator<Buffer, void, unknown>) {
+    console.log(chunk.toString('utf-8'));
+}
+```
+
+## Structured Output with Streaming
+
+When using `output_schema` to request structured data, the `content` field will contain an object instead of a string:
+
+```json  theme={null}
+{
+  "delta": {
+    "role": "assistant",
+    "content": {
+      "company": "Acme Corp",
+      "key_metrics": ["Revenue: $1M", "Growth: 50%"],
+      "summary": "Company showing strong growth..."
+    }
+  }
+}
+```
+
+## Error Handling
+
+If an error occurs during streaming, you may receive an error event:
+
+```json  theme={null}
+{
+  "id": "1d77bdf5-38a4-46c1-87a6-663dbc4528ec",
+  "object": "error",
+  "error": "An error occurred while streaming the research task"
+}
+```
+
+Always implement proper error handling in your streaming client to gracefully handle these cases.
+
+## Non-Streaming Alternative
+
+If you don't need real-time updates, set `stream: false` (or omit the parameter) to receive a single complete response:
+
+```json  theme={null}
+{
+  "request_id": "123e4567-e89b-12d3-a456-426614174111",
+  "created_at": "2025-01-15T10:30:00Z",
+  "status": "pending",
+  "input": "What are the latest developments in AI?",
+  "model": "mini",
+  "response_time": 1.23
+}
+```
+
+You can then poll the status endpoint to check when the research is complete.
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.tavily.com/llms.txt
+
+
+
+
+
+# OpenAI
+
+> Integrate Tavily with OpenAI to enhance your AI applications with real-time web search capabilities.
+
+## Introduction
+
+This guide shows you how to integrate Tavily with OpenAI to create more powerful and informed AI applications. By combining OpenAI's language models with Tavily's real-time web search capabilities, you can build AI systems and agentic AI applications that access current information and provide up-to-date responses.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+* An OpenAI API key from [OpenAI Platform](https://platform.openai.com/)
+* A Tavily API key from [Tavily Dashboard](https://app.tavily.com/sign-in)
+
+## Installation
+
+Install the required packages:
+
+```bash  theme={null}
+pip install openai tavily-python
+```
+
+## Setup
+
+Set up your API keys:
+
+```python  theme={null}
+import os
+
+# Set your API keys
+os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
+os.environ["TAVILY_API_KEY"] = "your-tavily-api-key"
+```
+
+## Using Tavily with OpenAI agents SDK
+
+```bash  theme={null}
+pip install -U openai-agents
+```
+
+```python  theme={null}
+import os
+import asyncio
+from agents import Agent, Runner, function_tool
+from tavily import TavilyClient
+
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+```
+
+```python  theme={null}
+@function_tool
+def tavily_search(query: str) -> str:
+    """
+    Perform a web search using Tavily and return a summarized result.
+    """
+    response = tavily_client.search(query,search_depth='advanced',max_results='5')
+    results = response.get("results", [])
+    return results or "No results found."
+```
+
+> **Note:** You can enhance the function by adding more parameters like `topic="news"`, `include_domains=["example.com"]`, `time_range="week"`, etc. to customize your search results.
+
+> You can set `auto_parameters=True` to have Tavily automatically configure search parameters based on the content and intent of your query. You can still set other parameters manually, and any explicit values you provide will override the automatic ones.
+
+```python  theme={null}
+async def main():
+    agent = Agent(
+        name="Web Research Agent",
+        instructions="Use tavily_search when you need up-to-date info.",
+        tools=[tavily_search],
+    )
+    out = await Runner.run(agent, "Latest developments about quantum computing from 2025")
+    print(out.final_output)
+```
+
+```python  theme={null}
+asyncio.run(main())
+```
+
+<Accordion title="Full Code Example">
+  ```python  theme={null}
+
+  import os
+  import asyncio
+  from agents import Agent, Runner, function_tool
+  from tavily import TavilyClient
+
+  tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+
+  @function_tool
+  def tavily_search(query: str) -> str:
+      """
+      Perform a web search using Tavily and return a summarized result.
+      """
+      response = tavily_client.search(query,search_depth='advanced',max_results='5')
+      results = response.get("results", [])
+      return results or "No results found."
+
+  async def main():
+      agent = Agent(
+          name="Web Research Agent",
+          instructions="Use tavily_search when you need up-to-date info.",
+          tools=[tavily_search],
+      )
+      out = await Runner.run(agent, "Latest developments about quantum computing from 2025")
+      print(out.final_output)
+
+
+  asyncio.run(main())
+  ```
+</Accordion>
+
+## Using Tavily with OpenAI Chat Completions API function calling
+
+```python  theme={null}
+import os
+import json
+from tavily import TavilyClient
+from openai import OpenAI
+
+# Load your API keys from environment variables
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+```
+
+### Function definition
+
+Define a function that OpenAI can call to perform searches:
+
+```python  theme={null}
+def tavily_search(**kwargs):
+    # Pass ALL supported kwargs straight to Tavily
+    results = tavily_client.search(**kwargs)
+    return results
+```
+
+```python  theme={null}
+# --- define tools ---
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "tavily_search",
+            "description": "Search the web with Tavily for up-to-date information",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The search query"},
+                    "max_results": {"type": "integer", "default": 5},
+                },
+                "required": ["query"],
+            },
+        },
+    }
+]
+```
+
+<a href="#schemas" onClick="document.getElementById('schemas').scrollIntoView({behavior: 'smooth'}); return false;">Scroll to the bottom to find the full json schema for search, extract, map and crawl</a>
+
+```python  theme={null}
+# --- conversation ---
+messages = [
+    {"role": "system", "content": "You are a helpful assistant that uses Tavily search when needed."},
+    {"role": "user", "content": "What are the top trends in 2025 about AI agents?"}
+]
+```
+
+```python  theme={null}
+#Ask the model; let it decide whether to call the tool
+response = openai_client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+    tools=tools,
+)
+```
+
+```python  theme={null}
+assistant_msg = response.choices[0].message
+ # keep the assistant msg that requested tool(s)
+messages.append(assistant_msg) 
+```
+
+```python  theme={null}
+
+if getattr(assistant_msg, "tool_calls", None):
+    for tc in assistant_msg.tool_calls:
+        args = tc.function.arguments
+        if isinstance(args, str):
+            args = json.loads(args)
+        elif not isinstance(args, dict):
+            args = json.loads(str(args))
+
+        if tc.function.name == "tavily_search":
+            # forward ALL args
+            results = tavily_search(**args)
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "name": "tavily_search",
+                "content": json.dumps(results),
+            })
+else:
+    print("\nNo tool call requested by the model.")
+
+```
+
+```python  theme={null}
+# Ask the model again for the final grounded answer
+final = openai_client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=messages,
+)
+
+final_msg = final.choices[0].message
+print("\nFINAL ANSWER:\n", final_msg.content or "(no content)")
+```
+
+<Accordion title="Full Code Example">
+  ```python  theme={null}
+  import os
+  import json
+  from tavily import TavilyClient
+  from openai import OpenAI
+
+  # --- setup ---
+  tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+  openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+  def tavily_search(**kwargs):
+      # Pass ALL supported kwargs straight to Tavily
+      results = tavily_client.search(**kwargs)
+      return results
+
+  # --- define tools ---
+  tools = [
+      {
+          "type": "function",
+          "function": {
+              "name": "tavily_search",
+              "description": "Search the web with Tavily for up-to-date information",
+              "parameters": {
+                  "type": "object",
+                  "properties": {
+                      "query": {"type": "string", "description": "The search query"},
+                      "max_results": {"type": "integer", "default": 5},
+                  },
+                  "required": ["query"],
+              },
+          },
+      }
+  ]
+
+
+  # --- conversation ---
+  messages = [
+      {"role": "system", "content": "You are a helpful assistant that uses Tavily search when needed."},
+      {"role": "user", "content": "What are the top trends in 2025 about AI agents?"}
+  ]
+
+
+  #Ask the model; let it decide whether to call the tool
+  response = openai_client.chat.completions.create(
+      model="gpt-4o-mini",
+      messages=messages,
+      tools=tools,
+  )
+
+  assistant_msg = response.choices[0].message
+  messages.append(assistant_msg)  # keep the assistant msg that requested tool(s)
+
+  if getattr(assistant_msg, "tool_calls", None):
+      for tc in assistant_msg.tool_calls:
+          args = tc.function.arguments
+          if isinstance(args, str):
+              args = json.loads(args)
+          elif not isinstance(args, dict):
+              args = json.loads(str(args))
+
+          if tc.function.name == "tavily_search":
+              # forward ALL args
+              results = tavily_search(**args)
+
+              messages.append({
+                  "role": "tool",
+                  "tool_call_id": tc.id,
+                  "name": "tavily_search",
+                  "content": json.dumps(results),
+              })
+  else:
+      print("\nNo tool call requested by the model.")
+
+  # Ask the model again for the final grounded answer
+  final = openai_client.chat.completions.create(
+      model="gpt-4o-mini",
+      messages=messages,
+  )
+
+  final_msg = final.choices[0].message
+  print("\nFINAL ANSWER:\n", final_msg.content or "(no content)")
+  ```
+</Accordion>
+
+## Using Tavily with OpenAI Responses API function calling
+
+```python  theme={null}
+import os
+import json
+from tavily import TavilyClient
+from openai import OpenAI
+
+# --- setup ---
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+```
+
+### Function definition
+
+Define a function that OpenAI can call to perform searches:
+
+```python  theme={null}
+# --- Function that will be called when AI requests a search ---
+def tavily_search(**kwargs):
+    """
+    Execute a Tavily web search with the given parameters.
+    This function is called by the AI when it needs to search the web.
+    """
+    results = tavily_client.search(**kwargs)
+    return results
+```
+
+```python  theme={null}
+# Define the tool for Tavily web search
+# This tells the AI what function it can call and what parameters it needs
+tools = [{
+    "type": "function",
+    "name": "tavily_search",
+    "description": "Search the web using Tavily. Provide relevant links in your answer.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Search query for Tavily."
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Max number of results to return",
+                "default": 5
+            }
+        },
+        "required": ["query", "max_results"], 
+        "additionalProperties": False
+    },
+    "strict": True
+}]
+```
+
+<a href="#schemas" onClick="document.getElementById('schemas').scrollIntoView({behavior: 'smooth'}); return false;">Scroll to the bottom to find the full json schema for search, extract, map and crawl</a>
+
+```python  theme={null}
+# --- Step 1: Create initial conversation ---
+# This sets up the conversation context for the AI
+input_list = [
+    {"role": "system", "content": "You are a helpful assistant that uses Tavily search when needed."},
+    {"role": "user", "content": "What are the top trends in 2025 about AI agents?"}
+]
+
+# --- Step 2: First API call - AI decides to search ---
+# The AI will analyze the user's question and decide if it needs to search the web
+response = openai_client.responses.create(
+    model="gpt-4o-mini",
+    tools=tools,
+    input=input_list,
+)
+
+# --- Step 3: Process the AI's response ---
+# Add the AI's response (including any function calls) to our conversation
+input_list += response.output
+```
+
+```python  theme={null}
+# --- Step 4: Execute any function calls the AI made ---
+for item in response.output:
+    if item.type == "function_call":
+        if item.name == "tavily_search":
+            # Parse the arguments the AI provided for the search
+            parsed_args = json.loads(item.arguments)
+            
+            # Execute the actual Tavily search
+            results = tavily_search(**parsed_args)
+            
+            # Add the search results back to the conversation
+            # This tells the AI what it found when it searched
+            function_output = {
+                "type": "function_call_output",
+                "call_id": item.call_id,
+                "output": json.dumps({
+                  "results": results
+                })
+            }
+            input_list.append(function_output)
+
+```
+
+```python  theme={null}
+# --- Step 5: Second API call - AI provides final answer ---
+# Now the AI has the search results and can provide an informed response
+response = openai_client.responses.create(
+    model="gpt-4o-mini",
+    instructions="Based on the Tavily search results provided, give me a comprehensive summary with citations.",
+    input=input_list,
+)
+
+# --- Display the final result ---
+print("AI Response:")
+print(response.output_text)
+```
+
+<Accordion title="Full Code Example">
+  ```python  theme={null}
+  import os
+  import json
+  from tavily import TavilyClient
+  from openai import OpenAI
+
+  # --- Setup: Initialize API clients ---
+  tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+  openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+  # --- Function that will be called when AI requests a search ---
+  def tavily_search(**kwargs):
+      """
+      Execute a Tavily web search with the given parameters.
+      This function is called by the AI when it needs to search the web.
+      """
+      results = tavily_client.search(**kwargs)
+      return results
+
+  # --- Define the search tool for OpenAI to use ---
+  # This tells the AI what function it can call and what parameters it needs
+  tools = [{
+      "type": "function",
+      "name": "tavily_search",
+      "description": "Search the web using Tavily. Provide relevant links in your answer.",
+      "parameters": {
+          "type": "object",
+          "properties": {
+              "query": {
+                  "type": "string",
+                  "description": "Search query for Tavily."
+              },
+              "max_results": {
+                  "type": "integer",
+                  "description": "Max number of results to return",
+                  "default": 5
+              }
+          },
+          "required": ["query", "max_results"], 
+          "additionalProperties": False
+      },
+      "strict": True
+  }]
+
+
+  # --- Step 1: Create initial conversation ---
+  # This sets up the conversation context for the AI
+  input_list = [
+      {"role": "system", "content": "You are a helpful assistant that uses Tavily search when needed."},
+      {"role": "user", "content": "What are the top trends in 2025 about AI agents?"}
+  ]
+
+  # --- Step 2: First API call - AI decides to search ---
+  # The AI will analyze the user's question and decide if it needs to search the web
+  response = openai_client.responses.create(
+      model="gpt-4o-mini",
+      tools=tools,
+      input=input_list,
+  )
+
+  # --- Step 3: Process the AI's response ---
+  # Add the AI's response (including any function calls) to our conversation
+  input_list += response.output
+
+  # --- Step 4: Execute any function calls the AI made ---
+  for item in response.output:
+      if item.type == "function_call":
+          if item.name == "tavily_search":
+              # Parse the arguments the AI provided for the search
+              parsed_args = json.loads(item.arguments)
+              
+              # Execute the actual Tavily search
+              results = tavily_search(**parsed_args)
+              
+              # Add the search results back to the conversation
+              # This tells the AI what it found when it searched
+              function_output = {
+                  "type": "function_call_output",
+                  "call_id": item.call_id,
+                  "output": json.dumps({
+                    "results": results
+                  })
+              }
+              input_list.append(function_output)
+
+  # --- Step 5: Second API call - AI provides final answer ---
+  # Now the AI has the search results and can provide an informed response
+  response = openai_client.responses.create(
+      model="gpt-4o-mini",
+      instructions="Based on the Tavily search results provided, give me a comprehensive summary with citations.",
+      input=input_list,
+  )
+
+  # --- Display the final result ---
+  print("AI Response:")
+  print(response.output_text)
+  ```
+</Accordion>
+
+## Tavily endpoints schema for OpenAI Responses API tool definition
+
+> **Note:** When using these schemas, you can customize which parameters are exposed to the model based on your specific use case. For example, if you are building a finance application, you might set `topic`: `"finance"` for all queries without exposing the `topic` parameter. This way, the LLM can focus on deciding other parameters, such as `time_range`, `country`, and so on, based on the user’s request. Feel free to modify these schemas as needed and only pass the parameters that are relevant to your application.
+
+> **API Format:** The schemas below are for OpenAI Responses API. For Chat Completions API, wrap the parameters in a `"function"` object: `{"type": "function", "function": {"name": "...", "parameters": {...}}}`.
+
+<div id="schemas">
+  <Accordion title="search schema">
+    ```python  theme={null}
+    tools = [
+        {
+            "type": "function",
+            "name": "tavily_search",
+            "description": "A powerful web search tool that provides comprehensive, real-time results using Tavily's AI search engine. Returns relevant web content with customizable parameters for result count, content type, and domain filtering. Ideal for gathering current information, news, and detailed web content analysis.",
+            "parameters": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["query"],
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query"
+                    },
+                    "auto_parameters": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Auto-tune parameters based on the query (beta). Explicit values you pass still win."
+                    },
+                    "topic": {
+                        "type": "string",
+                        "enum": ["general", "news","finance"],
+                        "default": "general",
+                        "description": "The category of the search. This will determine which of our agents will be used for the search"
+                    },
+                    "search_depth": {
+                        "type": "string",
+                        "enum": ["basic", "advanced"],
+                        "default": "basic",
+                        "description": "The depth of the search. It can be 'basic' or 'advanced'"
+                    },
+                    "chunks_per_source": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 3,
+                        "default": 3,
+                        "description": "Chunks are short content snippets (maximum 500 characters each) pulled directly from the source."
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 20,
+                        "default": 5,
+                        "description": "The maximum number of search results to return"
+                    },
+                    "time_range": {
+                        "type": "string",
+                        "enum": ["day", "week", "month", "year"],
+                        "description": "The time range back from the current date to include in the search results. This feature is available for both 'general' and 'news' search topics"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Will return all results after the specified start date. Required to be written in the format YYYY-MM-DD."
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Will return all results before the specified end date. Required to be written in the format YYYY-MM-DD"
+                    },
+                    "include_answer": {
+                        "description": "Include an LLM-generated answer. 'basic' is brief; 'advanced' is more detailed.",
+                        "oneOf": [
+                            {"type": "boolean"},
+                            {"type": "string", "enum": ["basic", "advanced"]}
+                        ],
+                        "default": False
+                    },
+                    "include_raw_content": {
+                        "description": "Include the cleaned and parsed HTML content of each search result",
+                        "oneOf": [
+                            {"type": "boolean"},
+                            {"type": "string", "enum": ["markdown", "text"]}
+                        ],
+                        "default": False
+                    },
+                    "include_images": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Include a list of query-related images in the response"
+                    },
+                    "include_image_descriptions": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Include a list of query-related images and their descriptions in the response"
+                    },
+                    "include_favicon": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Whether to include the favicon URL for each result"
+                    },
+                    "include_usage": {
+                        "type": "boolean",
+                        "default": False,
+                        "description": "Whether to include credit usage information in the response"
+                    },
+                    "include_domains": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "maxItems": 300,
+                        "description": "A list of domains to specifically include in the search results, if the user asks to search on specific sites set this to the domain of the site"
+                    },
+                    "exclude_domains": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "maxItems": 150,
+                        "description": "List of domains to specifically exclude, if the user asks to exclude a domain set this to the domain of the site"
+                    },
+                    "country": {
+                        "type": "string",
+                        "enum": ["afghanistan", "albania", "algeria", "andorra", "angola", "argentina", "armenia", "australia", "austria", "azerbaijan", "bahamas", "bahrain", "bangladesh", "barbados", "belarus", "belgium", "belize", "benin", "bhutan", "bolivia", "bosnia and herzegovina", "botswana", "brazil", "brunei", "bulgaria", "burkina faso", "burundi", "cambodia", "cameroon", "canada", "cape verde", "central african republic", "chad", "chile", "china", "colombia", "comoros", "congo", "costa rica", "croatia", "cuba", "cyprus", "czech republic", "denmark", "djibouti", "dominican republic", "ecuador", "egypt", "el salvador", "equatorial guinea", "eritrea", "estonia", "ethiopia", "fiji", "finland", "france", "gabon", "gambia", "georgia", "germany", "ghana", "greece", "guatemala", "guinea", "haiti", "honduras", "hungary", "iceland", "india", "indonesia", "iran", "iraq", "ireland", "israel", "italy", "jamaica", "japan", "jordan", "kazakhstan", "kenya", "kuwait", "kyrgyzstan", "latvia", "lebanon", "lesotho", "liberia", "libya", "liechtenstein", "lithuania", "luxembourg", "madagascar", "malawi", "malaysia", "maldives", "mali", "malta", "mauritania", "mauritius", "mexico", "moldova", "monaco", "mongolia", "montenegro", "morocco", "mozambique", "myanmar", "namibia", "nepal", "netherlands", "new zealand", "nicaragua", "niger", "nigeria", "north korea", "north macedonia", "norway", "oman", "pakistan", "panama", "papua new guinea", "paraguay", "peru", "philippines", "poland", "portugal", "qatar", "romania", "russia", "rwanda", "saudi arabia", "senegal", "serbia", "singapore", "slovakia", "slovenia", "somalia", "south africa", "south korea", "south sudan", "spain", "sri lanka", "sudan", "sweden", "switzerland", "syria", "taiwan", "tajikistan", "tanzania", "thailand", "togo", "trinidad and tobago", "tunisia", "turkey", "turkmenistan", "uganda", "ukraine", "united arab emirates", "united kingdom", "united states", "uruguay", "uzbekistan", "venezuela", "vietnam", "yemen", "zambia", "zimbabwe"],
+                        "description": "Boost search results from a specific country. This will prioritize content from the selected country in the search results. Available only if topic is general. Country names MUST be written in lowercase, plain English, with spaces and no underscores."
+                    }
+                }
+            }
+        }
+    ]
+
+
+    ```
+  </Accordion>
+</div>
+
+<Accordion title="extract schema">
+  ```python  theme={null}
+  tools = [
+      {
+          "type": "function",
+          "name": "tavily_extract",
+          "description": "A powerful web content extraction tool that retrieves and processes raw content from specified URLs, ideal for data collection, content analysis, and research tasks.",
+          "parameters": {
+              "type": "object",
+              "additionalProperties": False,
+              "required": ["urls"],
+              "properties": {
+                  "urls": {
+                      "type": "string",
+                      "description": "List of URLs to extract content from"
+                  },
+                  "include_images": {
+                      "type": "boolean",
+                      "default": False,
+                      "description": "Include a list of images extracted from the urls in the response"
+                  },
+                  "include_favicon": {
+                      "type": "boolean",
+                      "default": False,
+                      "description": "Whether to include the favicon URL for each result"
+                  },
+                  "include_usage": {
+                      "type": "boolean",
+                      "default": False,
+                      "description": "Whether to include credit usage information in the response"
+                  },
+                  "extract_depth": {
+                      "type": "string",
+                      "enum": ["basic", "advanced"],
+                      "default": "basic",
+                      "description": "Depth of extraction - 'basic' or 'advanced', if urls are linkedin use 'advanced' or if explicitly told to use advanced"
+                  },
+                  "timeout": {
+                      "type": "number",
+                      "enum": ["basic", "advanced"],
+                      "minimum": 0,
+                      "maximum": 60,
+                      "default": None,
+                      "description": "Maximum time in seconds to wait for the URL extraction before timing out. Must be between 1.0 and 60.0 seconds. If not specified, default timeouts are applied based on extract_depth: 10 seconds for basic extraction and 30 seconds for advanced extraction"
+                  },
+                  "format": {
+                      "type": "string",
+                      "enum": ["markdown", "text"],
+                      "default": "markdown",
+                      "description": "The format of the extracted web page content. markdown returns content in markdown format. text returns plain text and may increase latency."
+                  }
+              }
+          }
+      }
+  ]
+
+
+
+  ```
+</Accordion>
+
+<Accordion title="map schema">
+  ```python  theme={null}
+
+  tools = [
+      {
+          "type": "function",
+          "name": "tavily_map",
+          "description": "A powerful web mapping tool that creates a structured map of website URLs, allowing you to discover and analyze site structure, content organization, and navigation paths. Perfect for site audits, content discovery, and understanding website architecture.",
+          "parameters": {
+              "type": "object",
+              "additionalProperties": False,
+              "required": ["url"],
+              "properties": {
+                  "url": {
+                      "type": "string",
+                      "description": "The root URL to begin the mapping"
+                  },
+                  "instructions": {
+                      "type": "string",
+                      "description": "Natural language instructions for the crawler"
+                  },
+                  "max_depth": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5,
+                      "default": 1,
+                      "description": "Max depth of the mapping. Defines how far from the base URL the crawler can explore"
+                  },
+                  "max_breadth": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "default": 20,
+                      "description": "Max number of links to follow per level of the tree (i.e., per page)"
+                  },
+                  "limit": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "default": 50,
+                      "description": "Total number of links the crawler will process before stopping"
+                  },
+                  "select_paths": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to select only URLs with specific path patterns (e.g., /docs/.*, /api/v1.*)"
+                  },
+                  "select_domains": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to select crawling to specific domains or subdomains (e.g., ^docs\\.example\\.com$)"
+                  },
+                  "exclude_paths": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to exclude URLs with specific path patterns (e.g., /admin/.*)."
+                  },
+                  "exclude_domains": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to exclude specific domains or subdomains"
+                  },
+                  "allow_external": {
+                      "type": "boolean",
+                      "default": True,
+                      "description": "Whether to allow following links that go to external domains"
+                  },
+                  "include_usage": {
+                      "type": "boolean",
+                      "default": False,
+                      "description": "Whether to include credit usage information in the response"
+                  }
+              }
+          }
+      }
+  ]
+
+
+  ```
+</Accordion>
+
+<Accordion title="crawl schema">
+  ```python  theme={null}
+  tools = [
+      {
+          "type": "function",
+          "name": "tavily_crawl",
+          "description": "A powerful web crawler that initiates a structured web crawl starting from a specified base URL. The crawler expands from that point like a tree, following internal links across pages. You can control how deep and wide it goes, and guide it to focus on specific sections of the site.",
+          "parameters": {
+              "type": "object",
+              "additionalProperties": False,
+              "required": ["url"],
+              "properties": {
+                  "url": {
+                      "type": "string",
+                      "description": "The root URL to begin the crawl"
+                  },
+                  "instructions": {
+                      "type": "string",
+                      "description": "Natural language instructions for the crawler"
+                  },
+                  "max_depth": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5,
+                      "default": 1,
+                      "description": "Max depth of the crawl. Defines how far from the base URL the crawler can explore."
+                  },
+                  "max_breadth": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "default": 20,
+                      "description": "Max number of links to follow per level of the tree (i.e., per page)"
+                  },
+                  "limit": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "default": 50,
+                      "description": "Total number of links the crawler will process before stopping"
+                  },
+                  "select_paths": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to select only URLs with specific path patterns (e.g., /docs/.*, /api/v1.*)"
+                  },
+                  "select_domains": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to select crawling to specific domains or subdomains (e.g., ^docs\\.example\\.com$)"
+                  },
+                  "exclude_paths": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to exclude paths (e.g., /private/.*, /admin/.*)"
+                  },
+                  "exclude_domains": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Regex patterns to exclude domains/subdomains (e.g., ^private\\.example\\.com$)"
+                  },
+                  "allow_external": {
+                      "type": "boolean",
+                      "default": True,
+                      "description": "Whether to allow following links that go to external domains"
+                  },
+                  "include_images": {
+                      "type": "boolean",
+                      "default": False,
+                      "description": "Include images discovered during the crawl"
+                  },
+                  "extract_depth": {
+                      "type": "string",
+                      "enum": ["basic", "advanced"],
+                      "default": "basic",
+                      "description": "Advanced extraction retrieves more data, including tables and embedded content, with higher success but may increase latency"
+                  },
+                  "format": {
+                      "type": "string",
+                      "enum": ["markdown", "text"],
+                      "default": "markdown",
+                      "description": "The format of the extracted web page content. markdown returns content in markdown format. text returns plain text and may increase latency."
+                  },
+                  "include_favicon": {
+                      "type": "boolean",
+                      "default": False,
+                      "description": "Whether to include the favicon URL for each result"
+                  },
+                  "include_usage": {
+                      "type": "boolean",
+                      "default": False,
+                      "description": "Whether to include credit usage information in the response"
+                  }
+              }
+          }
+      }
+  ]
+
+
+  ```
+</Accordion>
+
+For more information about Tavily's capabilities, check out our [API documentation](/documentation/api-reference/introduction) and [best practices](/documentation/best-practices/best-practices-search).
+
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://docs.tavily.com/llms.txt
+
+
+
+
+HERE IS THE EXISTING CODE: [paste full file]
+KEEP ALL OF THIS EXACTLY: [highlight what's untouchable]
+CHANGE ONLY THIS: [one specific thing]
+OUTPUT: [full file with only that change, nothing else modified]
+
+
+
+HERE IS A WORKING BUTTON COMPONENT: [paste full working file]
+CREATE A SIMILAR TATTOO PAGE COMPONENT USING THE EXACT SAME PATTERN
+IMPORTS: [exact imports from the example]
+STRUCTURE: [exact structure from the example]
+ONLY CHANGE: [the specific logic/content needed]
+
+
+
+
+
+
