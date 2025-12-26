@@ -11,7 +11,7 @@ const Home = () => (
   <main className="flex min-h-screen items-center justify-center bg-background">
     <Link
       className="rounded-xl bg-purple-600 px-8 py-4 font-bold text-2xl text-white shadow-lg transition hover:bg-purple-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
-      href="/tattty"
+      href="/dashboard"
     >
       PREDICT NOW
     </Link>

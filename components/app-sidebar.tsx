@@ -40,45 +40,45 @@ const data = {
   navMain: [
     {
       title: "Dashboard",
-      url: "/tattty",
+      url: "/dashboard",
       icon: IconSparkles,
     },
     {
       title: "Trending Now",
-      url: "/tattty/screw-ups",
+      url: "/dashboard/trending-now",
       icon: IconBrain,
     },
     {
       title: "Top Predictors",
-      url: "/tattty/couples-tatttz",
+      url: "/dashboard/top-predictors",
       icon: IconNetwork,
     },
 
     {
       title: "Gallery",
-      url: "/tattty/gallery",
+      url: "/dashboard/gallery",
       icon: IconListDetails,
     },
     {
       title: "My Predictions",
-      url: "/my-tatttz",
+      url: "/my-predictions",
       icon: IconChartBar,
     },
     {
       title: "Categories",
-      url: "/tattty/fonts",
+      url: "/dashboard/categories",
       icon: IconTypography,
     },
   ],
   navSecondary: [
     {
       title: "Settings",
-      url: "/tattty/settings",
+      url: "/dashboard/settings",
       icon: IconSettings,
     },
     {
       title: "Get Help",
-      url: "/tattty/get-help",
+      url: "/dashboard/get-help",
       icon: IconHelp,
     },
   ],

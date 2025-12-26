@@ -66,7 +66,7 @@ function EmptyDescription({ isGenerated }: { isGenerated: boolean }) {
 
 function CreateButton() {
   return (
-    <Link href="/tattty">
+    <Link href="/dashboard">
       <Button>
         <Sparkles className="mr-2 h-4 w-4" />
         Make Your First Prediction
